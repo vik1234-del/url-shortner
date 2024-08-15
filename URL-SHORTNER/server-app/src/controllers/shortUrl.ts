@@ -22,7 +22,7 @@ export const createUrl = async (
 
     // Validate the URL
     if (!validUrl.isUri(fullUrl)) {
-      console.log("Invalid URL:", fullUrl); // Log invalid URL
+      console.log("Invalid URL:", fullUrl, " please input a valid url"); // Log invalid URL
       return res.status(400).send({ message: "Invalid URL" });
     }
 
@@ -90,7 +90,7 @@ export const getAllUrl = async (
     }
 
     // If not in cache, query the database
-    const shortUrls = await urlModel.find();
+    const shortUrls = await urlModel.find().sort({ createdAt: -1 });
     if (shortUrls.length === 0) {
       return res.status(404).send({ message: "Short URLs not found" });
     }
@@ -111,39 +111,20 @@ export const getAllUrl = async (
 
 export const getUrl = async (req: express.Request, res: express.Response) => {
   try {
-    // Construct cache key based on the short URL ID or unique identifier
-    const cacheKey = `shortUrl:${req.params.id}`;
-
-    // Check cache first
-    const cachedUrl = await redis.get(cacheKey);
-    if (cachedUrl) {
-      console.log("Cache hit for key:", cacheKey); // Log cache hit
-      const shortUrl = JSON.parse(cachedUrl);
-      shortUrl.clicks++;
-      await shortUrl.save(); // Update click count in database
-      return res.redirect(shortUrl.fullUrl);
+    const shortUrl = await urlModel.findOne({ shortUrl: req.params.id });
+    if (!shortUrl) {
+      res.status(404).send({ message: "Full URL not found" });
     } else {
-      console.log("Cache miss for key:", cacheKey); // Log cache miss
-
-      // If URL is not in cache, query the database
-      const shortUrl = await urlModel.findOne({ shortUrl: req.params.id });
-      if (!shortUrl) {
-        return res.status(404).send({ message: "Full URL not found" });
-      }
-
-      // Update the cache
-      await redis.set(cacheKey, JSON.stringify(shortUrl), "EX", 3600); // Cache for 1 hour
-
-      // Update click count and redirect
       shortUrl.clicks++;
-      await shortUrl.save(); // Update click count in database
-      return res.redirect(shortUrl.fullUrl);
+      shortUrl.save();
+      res.redirect(`${shortUrl.fullUrl}`);
     }
   } catch (error) {
-    console.error("Error retrieving URL:", error); // Log error
-    return res.status(500).send({ message: "Something went wrong" });
+    res.status(500).send({ message: "Full URL not found" });
   }
 };
+
+
 
 export const deleteUrl = async (
   req: express.Request,
