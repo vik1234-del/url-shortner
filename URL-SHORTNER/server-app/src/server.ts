@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: "https://66bf5f3fc69af6000820c364--scissor-urlshortner.netlify.app",
+    origin: "hhttp://localhost:3000",
     credentials: true,
   })
 );
